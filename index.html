@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1565C0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>陌拜地图 · 广西</title>
+  <style>
+    :root {
+      --primary: #1565C0;
+      --primary-dark: #0D47A1;
+      --accent: #FF6D00;
+      --success: #2E7D32;
+      --danger: #C62828;
+      --warning: #F57F17;
+      --info: #1565C0;
+      --bg: #F5F5F5;
+      --card: #FFFFFF;
+      --text: #212121;
+      --text2: #757575;
+      --border: #E0E0E0;
+      --shadow: 0 2px 8px rgba(0,0,0,0.12);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== 顶部标题栏 ===== */
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 100;
+      position: relative;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .header-actions { display: flex; gap: 8px; }
+    .header-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .header-btn:active { background: rgba(255,255,255,0.35); }
+
+    /* ===== 高德地图容器 ===== */
+    #mapContainer { width: 100%; flex: 1; position: relative; min-height: 0; overflow: hidden; }
+    #map { width: 100%; height: 100%; }
+
+    /* ===== 高德地图控件美化 ===== */
+    .amap-mcode { display: none !important; }
+
+    /* ===== 定位按钮 ===== */
+    .loc-btn {
+      position: absolute;
+      bottom: 30px;
+      right: 16px;
+      z-index: 50;
+      background: white;
+      border: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      box-shadow: var(--shadow);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .loc-btn:active { background: #f0f0f0; }
+    .loc-btn.locating { animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ===== 右下角工具栏 ===== */
+    .fab {
+      position: absolute;
+      bottom: 90px;
+      right: 16px;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .fab-btn {
+      background: var(--primary);
+      border: none;
+      color: white;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      box-shadow: var(--shadow);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .fab-btn:active { transform: scale(0.93); background: var(--primary-dark); }
+    .fab-btn.scan { background: var(--accent); }
+    .fab-btn.scan:active { background: #E65100; }
+
+    /* ===== 搜索栏 ===== */
+    .search-bar {
+      position: absolute;
+      top: 12px;
+      left: 16px;
+      right: 70px;
+      z-index: 50;
+      display: flex;
+      gap: 8px;
+    }
+    .search-input-wrap { flex: 1; position: relative; }
+    .search-input {
+      width: 100%;
+      height: 40px;
+      padding: 0 36px 0 12px;
+      border: none;
+      border-radius: 20px;
+      background: white;
+      box-shadow: var(--shadow);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+    }
+    .search-input::placeholder { color: var(--text2); }
+    .search-icon {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: var(--text2);
+      pointer-events: none;
+    }
+
+    /* ===== POI搜索建议列表 ===== */
+    .poi-suggestions {
+      position: absolute;
+      top: 56px;
+      left: 16px;
+      right: 70px;
+      z-index: 60;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-height: 260px;
+      overflow-y: auto;
+      display: none;
+    }
+    .poi-suggestions.show { display: block; }
+    .poi-suggestion-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .poi-suggestion-item:active { background: #f5f5f5; }
+    .poi-suggestion-item:last-child { border-bottom: none; }
+    .poi-suggestion-item .sug-name { font-weight: 500; color: var(--text); margin-bottom: 2px; }
+    .poi-suggestion-item .sug-addr { font-size: 12px; color: var(--text2); }
+
+    /* ===== 录入面板 ===== */
+    .panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+      z-index: 200;
+      max-height: 85dvh;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .panel.show { transform: translateY(0); }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 18px 0;
+      position: sticky;
+      top: 0;
+      background: var(--card);
+    }
+    .panel-header h3 { font-size: 16px; color: var(--text); }
+    .panel-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--text2);
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+    .panel-body { padding: 14px 18px 32px; }
+
+    /* ===== 诊所列表 ===== */
+    .clinic-list { display: flex; flex-direction: column; gap: 10px; }
+    .clinic-item {
+      background: #FAFAFA;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .clinic-item:active { border-color: var(--primary); background: #EEF4FF; }
+    .clinic-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .clinic-item-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .clinic-item-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-intent { background: #E8F5E9; color: var(--success); }
+    .badge-follow { background: #FFF3E0; color: var(--warning); }
+    .badge-done { background: #E3F2FD; color: var(--primary); }
+    .badge-none { background: #F5F5F5; color: var(--text2); }
+    .clinic-item-row { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+    .clinic-item-row .tag { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: #E0E0E0; color: var(--text2); }
+    .clinic-item-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+    .clinic-item-time { font-size: 12px; color: var(--text2); }
+    .clinic-item-actions { display: flex; gap: 6px; }
+    .clinic-action-btn {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-nav { background: var(--primary); color: white; }
+    .btn-call { background: var(--success); color: white; }
+    .btn-del { background: #FFEBEE; color: var(--danger); }
+
+    /* ===== 录入表单 ===== */
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: 13px; color: var(--text2); margin-bottom: 5px; display: block; }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      background: white;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--primary); }
+    .form-textarea { resize: vertical; min-height: 72px; }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+    .form-hint { font-size: 11px; color: var(--text2); margin-top: 3px; }
+    .char-count { text-align: right; font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+    /* ===== 状态按钮组 ===== */
+    .status-btns { display: flex; gap: 8px; }
+    .status-btn {
+      flex: 1;
+      padding: 8px 4px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.2s;
+    }
+    .status-btn.selected { border-color: var(--primary); color: var(--primary); background: #EEF4FF; font-weight: 600; }
+
+    /* ===== 提交按钮 ===== */
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn-submit:active { background: var(--primary-dark); }
+    .btn-submit.save-another {
+      background: white;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      margin-top: 8px;
+    }
+
+    /* ===== 导航面板 ===== */
+    #navPanel {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 300;
+      background: white;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    #navPanel.show { transform: translateY(0); }
+    .nav-header {
+      background: var(--primary);
+      color: white;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .nav-header span { font-size: 16px; font-weight: 600; }
+    .nav-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: white;
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      border: none;
+      background: none;
+      font-size: 14px;
+      color: var(--text2);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    #navContainer { width: 100%; height: calc(100% - 108px); }
+
+    /* ===== POI 附近扫描面板 ===== */
+    #poiPanel {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 250;
+      background: white;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    #poiPanel.show { transform: translateY(0); }
+    .poi-panel-header {
+      background: var(--accent);
+      color: white;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .poi-panel-header h3 { font-size: 16px; font-weight: 600; }
+    .poi-panel-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .poi-list { padding: 12px 16px 100px; }
+    .poi-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .poi-item:last-child { border-bottom: none; }
+    .poi-item-info { flex: 1; }
+    .poi-item-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+    .poi-item-type { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
+    .poi-item-addr { font-size: 12px; color: var(--text2); }
+    .poi-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .poi-distance { font-size: 12px; color: var(--primary); font-weight: 500; }
+    .poi-btns { display: flex; gap: 6px; }
+    .poi-btn {
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .poi-btn-nav { background: var(--primary); color: white; }
+    .poi-btn-add { background: var(--success); color: white; }
+    .poi-btn-call { background: var(--accent); color: white; }
+
+    /* ===== 今晚电话面板 ===== */
+    #phonePanel {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 250;
+      background: white;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    #phonePanel.show { transform: translateY(0); }
+    .phone-panel-header {
+      background: var(--primary-dark);
+      color: white;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .phone-panel-header h3 { font-size: 16px; font-weight: 600; }
+    .phone-panel-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .phone-list { padding: 12px 16px 100px; }
+    .phone-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .phone-item:last-child { border-bottom: none; }
+    .phone-item-info { flex: 1; }
+    .phone-item-name { font-size: 15px; font-weight: 500; margin-bottom: 3px; }
+    .phone-item-phone { font-size: 13px; color: var(--primary); margin-bottom: 2px; }
+    .phone-item-note { font-size: 12px; color: var(--text2); }
+    .phone-call-btn {
+      background: var(--success);
+      color: white;
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      flex-shrink: 0;
+    }
+
+    /* ===== Toast 通知 ===== */
+    #toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(33,33,33,0.88);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 14px;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== 加载遮罩 ===== */
+    .loading-overlay {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.95);
+      border-radius: var(--radius);
+      padding: 12px 24px;
+      font-size: 14px;
+      color: var(--primary);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--shadow);
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .loading-overlay.hide { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid #BBDEFB;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== 无数据提示 ===== */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text2);
+    }
+    .empty-state .emoji { font-size: 40px; margin-bottom: 10px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ===== 标签选择器 ===== */
+    .tag-selector { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag-btn {
+      padding: 6px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      background: white;
+      font-size: 13px;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tag-btn:active { transform: scale(0.95); }
+    .tag-btn.selected { border-color: var(--primary); color: var(--primary); background: #EEF4FF; font-weight: 600; }
+
+    /* ===== 照片上传 ===== */
+    .photo-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .photo-upload-area:active { border-color: var(--primary); }
+    .photo-hint { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text2); font-size: 13px; }
+    .photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .photo-item { position: relative; width: 72px; height: 72px; }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+    .photo-remove {
+      position: absolute; top: -6px; right: -6px;
+      width: 20px; height: 20px; background: var(--danger); color: white;
+      border-radius: 50%; border: none; font-size: 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ===== 编辑时预填提示 ===== */
+    .edit-mode-badge { background: var(--accent); color: white; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+  </style>
+</head>
+<body>
+
+<!-- ==================== 标题栏 ==================== -->
+<header>
+  <h1>📍 陌拜地图 · 广西</h1>
+  <div class="header-actions">
+    <button class="header-btn" onclick="showPhonePanel()" title="今晚电话">📞</button>
+    <button class="header-btn" onclick="showClinicList()" title="诊所列表">📋</button>
+  </div>
+</header>
+
+<!-- ==================== 高德地图 ==================== -->
+<div id="mapContainer">
+  <div id="map"></div>
+
+  <!-- 搜索栏 -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <input
+        type="search"
+        class="search-input"
+        id="searchInput"
+        placeholder="搜索诊所、医院、药店..."
+        autocomplete="off"
+        oninput="handleSearch(this.value)"
+        onkeydown="if(event.key==='Enter'){const v=this.value.trim();if(v){triggerSearch(v);}}"
+      >
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+
+  <!-- POI搜索建议 -->
+  <div class="poi-suggestions" id="poiSuggestions"></div>
+
+  <!-- 定位按钮 -->
+  <button class="loc-btn" id="locBtn" onclick="goToMyLocation()" title="回到我的位置">📍</button>
+
+  <!-- 工具栏 -->
+  <div class="fab">
+    <button class="fab-btn scan" onclick="showPoiPanel()" title="附近医疗设施">🏥</button>
+    <button class="fab-btn" onclick="showAddPanel()" title="录入诊所">+</button>
+  </div>
+</div>
+
+<!-- ==================== 诊所列表面板 ==================== -->
+<div class="panel" id="clinicListPanel">
+  <div class="panel-header">
+    <h3>📋 全部诊所 (<span id="clinicCount">0</span>)</h3>
+    <button class="panel-close" onclick="closeClinicList()">✕</button>
+  </div>
+  <div class="panel-body">
+    <div class="clinic-list" id="clinicList"></div>
+  </div>
+</div>
+
+<!-- ==================== 录入面板 ==================== -->
+<div class="panel" id="addPanel">
+  <div class="panel-header">
+    <h3 id="addPanelTitle">➕ 录入陌拜</h3>
+    <button class="panel-close" onclick="closeAddPanel()">✕</button>
+  </div>
+  <div class="panel-body">
+    <form id="clinicForm" onsubmit="submitClinic(event)">
+      
+      <!-- 诊所名称 -->
+      <div class="form-group">
+        <label class="form-label">诊所/机构名称 *</label>
+        <input type="text" class="form-input" id="fName" placeholder="点击可搜索诊所" required maxlength="60">
+        <div class="form-hint" id="nameHint" style="display:none"></div>
+      </div>
+
+      <!-- 机构类型 + 规模 -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">机构类型</label>
+          <select class="form-select" id="fType" onchange="onTypeChange()">
+            <option value="诊所">🏥 诊所</option>
+            <option value="门诊部">🏨 门诊部</option>
+            <option value="医院">🏨 医院</option>
+            <option value="卫生室">🏠 卫生室</option>
+            <option value="中医馆">🏮 中医馆</option>
+            <option value="药店">💊 药店</option>
+            <option value="其他">📋 其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">诊所规模</label>
+          <select class="form-select" id="fSize">
+            <option value="小型">🏠 小型（1-3人）</option>
+            <option value="中型">🏢 中型（4-10人）</option>
+            <option value="大型">🏗️ 大型（10人以上）</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 地址 + 定位按钮 -->
+      <div class="form-group">
+        <label class="form-label">地址</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="form-input" id="fAddress" placeholder="点击下方按钮自动定位" readonly style="flex:1">
+          <button type="button" class="fab-btn" onclick="locateCurrentAddress()" style="width:42px;height:42px;flex-shrink:0;" title="定位当前地址">📍</button>
+        </div>
+      </div>
+
+      <!-- 联系电话 + 负责人 -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">联系电话</label>
+          <input type="tel" class="form-input" id="fPhone" placeholder="点击拨打电话" maxlength="30">
+        </div>
+        <div class="form-group">
+          <label class="form-label">负责人</label>
+          <input type="text" class="form-input" id="fContact" placeholder="医生/老板姓名" maxlength="20">
+        </div>
+      </div>
+
+      <!-- 拜访结果 -->
+      <div class="form-group">
+        <label class="form-label">拜访结果</label>
+        <div class="status-btns">
+          <button type="button" class="status-btn selected" data-val="有意向" onclick="selectStatus(this)">💚 有意向</button>
+          <button type="button" class="status-btn" data-val="待跟进" onclick="selectStatus(this)">💛 待跟进</button>
+          <button type="button" class="status-btn" data-val="已录入" onclick="selectStatus(this)">💙 已录入</button>
+          <button type="button" class="status-btn" data-val="无意向" onclick="selectStatus(this)">❤️ 无意向</button>
+        </div>
+      </div>
+      <input type="hidden" id="fStatus" value="有意向">
+
+      <!-- 合作意向 -->
+      <div class="form-group">
+        <label class="form-label">合作意向</label>
+        <select class="form-select" id="fIntent">
+          <option value="待了解">🤔 待了解</option>
+          <option value="有需求">💡 有需求</option>
+          <option value="很感兴趣">🔥 很感兴趣</option>
+          <option value="已合作">✅ 已合作</option>
+          <option value="暂不需要">❌ 暂不需要</option>
+        </select>
+      </div>
+
+      <!-- 主要需求 -->
+      <div class="form-group">
+        <label class="form-label">主要需求（可多选）</label>
+        <div class="tag-selector" id="tagSelector">
+          <span class="tag-btn" data-val="中药" onclick="toggleTag(this)">中药</span>
+          <span class="tag-btn" data-val="西药" onclick="toggleTag(this)">西药</span>
+          <span class="tag-btn" data-val="颗粒" onclick="toggleTag(this)">配方颗粒</span>
+          <span class="tag-btn" data-val="膏方" onclick="toggleTag(this)">膏方</span>
+          <span class="tag-btn" data-val="线上" onclick="toggleTag(this)">线上诊疗</span>
+          <span class="tag-btn" data-val="培训" onclick="toggleTag(this)">培训</span>
+          <span class="tag-btn" data-val="设备" onclick="toggleTag(this)">设备</span>
+          <span class="tag-btn" data-val="其他" onclick="toggleTag(this)">其他</span>
+        </div>
+      </div>
+
+      <!-- 备注 -->
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="fNote" placeholder="诊所环境、老板态度、竞品情况..." maxlength="500" oninput="updateCharCount()"></textarea>
+        <div class="char-count" id="charCount">0/500</div>
+      </div>
+
+      <!-- 照片上传 -->
+      <div class="form-group">
+        <label class="form-label">现场照片</label>
+        <div class="photo-upload-area" id="photoArea" onclick="triggerPhoto()">
+          <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotoSelect(this)">
+          <div class="photo-hint">
+            <span style="font-size:28px;">📷</span>
+            <span>点击拍照/添加照片</span>
+          </div>
+        </div>
+        <div class="photo-preview" id="photoPreview"></div>
+      </div>
+
+      <!-- 提交按钮 -->
+      <button type="submit" class="btn-submit">💾 保存</button>
+      <button type="button" class="btn-submit save-another" onclick="submitAndAddAnother()">💾 保存并继续录入</button>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== 导航面板 ==================== -->
+<div id="navPanel">
+  <div class="nav-header">
+    <button class="nav-close" onclick="closeNav()">✕</button>
+    <span id="navTargetName">导航</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchNavMode('driving')" id="tabDriving">🚗 驾车</button>
+    <button class="nav-tab" onclick="switchNavMode('walking')" id="tabWalking">🚶 步行</button>
+    <button class="nav-tab" onclick="switchNavMode('transit')" id="tabBus">🚌 公交</button>
+  </div>
+  <div id="navContainer"></div>
+</div>
+
+<!-- ==================== 附近 POI 面板 ==================== -->
+<div id="poiPanel">
+  <div class="poi-panel-header">
+    <h3>🏥 附近医疗设施</h3>
+    <button class="poi-panel-close" onclick="closePoiPanel()">✕</button>
+  </div>
+  <div class="poi-list" id="poiList"></div>
+</div>
+
+<!-- ==================== 今晚电话面板 ==================== -->
+<div id="phonePanel">
+  <div class="phone-panel-header">
+    <h3>📞 今晚待联系 (<span id="phoneCount">0</span>)</h3>
+    <button class="phone-panel-close" onclick="closePhonePanel()">✕</button>
+  </div>
+  <div class="phone-list" id="phoneList"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- 加载遮罩 -->
+<div class="loading-overlay show" id="loadingOverlay">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:18px;height:18px;border:2px solid #1565C0;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <span id="loadingText">正在加载高德地图...</span>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- 高德地图 JS API v2.0 -->
+<script src="https://webapi.amap.com/maps?v=2.0&key=c401917f408d1089848c471f5562d00b&plugin=AMap.Geocoder,AMap.PlaceSearch,AMap.Driving,AMap.Walking,AMap.Transit"></script>
+
+<script>
+// ====== 数据 & 全局变量 ======
+const AMAP_KEY = 'c401917f408d1089848c471f5562d00b';
+let records = JSON.parse(localStorage.getItem('clinicRecords') || '[]');
+let map, geocoder, placeSearch;
+let currentLocation = null;
+let myMarker = null;
+let clinicMarkers = [];
+let navPanel = null;
+let navInfoWindow = null;
+let currentNavTarget = null;
+let currentNavMode = 'driving';
+let poiSuggestionsTimer = null;
+let firstLocationDone = false; // 控制首次定位后自动扫描
+
+// ====== 初始化高德地图 ======
+async function initMap() {
+  // 等待 AMap 全局对象可用
+  let retries = 0;
+  while (typeof AMap === 'undefined' && retries < 20) {
+    await new Promise(r => setTimeout(r, 500));
+    retries++;
+  }
+  if (typeof AMap === 'undefined') {
+    throw new Error('无法加载高德地图 JS API，请检查网络连接');
+  }
+
+  map = new AMap.Map('map', {
+    zoom: 13,
+    center: [108.366, 22.817],
+    viewMode: '2D',
+    showIndoorMap: false,
+    layers: [],  // 不加载默认图层，避免默认瓦片服务器失效导致空白
+  });
+
+  // ====== 强制使用高德矢量标准地图瓦片 ======
+  AMap.plugin('AMap.TileLayer', () => {
+    // 矢量标准地图瓦片（style=7 = 纯矢量街道图，不是卫星图）
+    const tileOpt = new AMap.TileLayer({
+      getTileUrl: function(x, y, z) {
+        return `https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=${x}&y=${y}&z=${z}`;
+      },
+      tileSize: 256,
+      zIndex: 0,
+    });
+    map.add(tileOpt);
+
+    // 标注/路网瓦片（叠加在地图像上显示路名、建筑名）
+    const labelOpt = new AMap.TileLayer({
+      getTileUrl: function(x, y, z) {
+        return `https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=6&x=${x}&y=${y}&z=${z}`;
+      },
+      tileSize: 256,
+      zIndex: 8,
+    });
+    map.add(labelOpt);
+  });
+
+  // 添加高德官方缩放+定位控件
+  await new Promise(resolve => {
+    AMap.plugin('AMap.ToolBar', () => {
+      map.addControl(new AMap.ToolBar({ position: 'RB', liteStyle: true }));
+      resolve();
+    });
+  });
+
+  // 逆地址解析器
+  geocoder = new AMap.Geocoder({ city: '南宁' });
+
+  // POI 搜索
+  placeSearch = new AMap.PlaceSearch({
+    city: '南宁',
+    citylimit: false,
+    pageSize: 10,
+    pageIndex: 1,
+    extensions: 'all',
+  });
+
+  // 点击地图标记
+  map.on('click', async (e) => {
+    const { lng, lat } = e.lnglat;
+    const addr = await getAddressFromLngLat(lng, lat);
+    mapMark(lng, lat, addr);
+  });
+
+  // 隐藏加载遮罩
+  hideLoading();
+
+  // 页面加载后尝试定位
+  setTimeout(goToMyLocation, 1500);
+  renderAllMarkers();
+}
+
+// ====== 高德逆地址解析 ======
+function getAddressFromLngLat(lng, lat) {
+  return new Promise((resolve) => {
+    geocoder.getAddress([lng, lat], (status, result) => {
+      if (status === 'complete' && result.regeocode) {
+        const r = result.regeocode;
+        const comp = r.addressComponent;
+        const street = r.streetNumber?.street || '';
+        const num = r.streetNumber?.number || '';
+        const district = comp.district || comp.city || comp.province || '';
+        resolve(district + street + num || r.formattedAddress);
+      } else {
+        resolve('');
+      }
+    });
+  });
+}
+
+// ====== 定位到当前位置 ======
+function goToMyLocation() {
+  const btn = document.getElementById('locBtn');
+  btn.classList.add('locating');
+  btn.textContent = '⏳';
+
+  AMap.plugin('AMap.Geolocation', () => {
+    const geolocation = new AMap.Geolocation({
+      enableHighAccuracy: true,   // 启用高精度GPS定位
+      timeout: 12000,            // 超时时间延长到12秒
+      buttonOffset: new AMap.Pixel(0, 0),
+      zoomToAccuracy: true,      // 定位成功后自动调整视野
+      showButton: false,         // 隐藏默认定位按钮（我们有自己的）
+      showCircle: true,          // 显示定位精度圈
+      showMarker: false,         // 我们自己画定位点
+    });
+    map.addControl(geolocation);
+    geolocation.getCurrentPosition((status, result) => {
+      btn.classList.remove('locating');
+      btn.textContent = '📍';
+      if (status === 'complete') {
+        const { lng, lat } = result.position;
+        currentLocation = [lng, lat];
+        map.setCenter([lng, lat]);
+        map.setZoom(15);
+        if (myMarker) map.remove(myMarker);
+
+        // 定位精度圈（蓝色半透明）
+        if (result.accuracy) {
+          const circle = new AMap.Circle({
+            center: [lng, lat],
+            radius: result.accuracy,  // 精度范围（米）
+            fillColor: '#4285F4',
+            fillOpacity: 0.15,
+            strokeColor: '#4285F4',
+            strokeOpacity: 0.5,
+            strokeWeight: 1,
+            zIndex: 5,
+          });
+          map.add(circle);
+        }
+
+        // 定位点标记
+        myMarker = new AMap.Marker({
+          position: [lng, lat],
+          content: '<div style="width:20px;height:20px;background:#4285F4;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(66,133,244,0.5)"></div>',
+          offset: new AMap.Pixel(-10, -10),
+        });
+        map.add(myMarker);
+
+        // ====== 首次定位成功后自动扫描附近诊所 ======
+        if (!firstLocationDone) {
+          firstLocationDone = true;
+          // 根据精度显示不同提示
+          const accText = result.accuracy ? ` 精度: ±${Math.round(result.accuracy)}米` : '';
+          showToast(`定位成功${accText}，正在扫描附近...`, 2500);
+          setTimeout(() => {
+            autoScanNearby();
+          }, 800);
+        }
+      } else {
+        showToast('定位失败，请检查权限和网络', 3000);
+      }
+    });
+  });
+}
+
+// ====== 在地图上标记 ======
+async function mapMark(lng, lat, address) {
+  // 更新当前位置
+  currentLocation = [lng, lat];
+  // 预填表单
+  document.getElementById('fAddress').value = address;
+  // 中心移到该点
+  map.setCenter([lng, lat]);
+  showToast('已定位 ' + (address || '该坐标'), 2000);
+}
+
+// ====== 渲染全部标记点 ======
+function renderAllMarkers() {
+  clinicMarkers.forEach(m => map.remove(m));
+  clinicMarkers = [];
+  records.forEach(rec => {
+    if (rec.lat && rec.lng) {
+      const color = getMarkerColor(rec.status);
+      const marker = new AMap.Marker({
+        position: [rec.lng, rec.lat],
+        title: rec.name,
+        content: `<div style="background:${color};width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:12px;color:white;transform-origin:center"><span style="transform:rotate(45deg);display:block;text-align:center;line-height:1.2;font-size:10px;font-weight:bold">${rec.name.slice(0,2)}</span></div>`,
+        offset: new AMap.Pixel(-18, -36),
+        extData: rec,
+      });
+      marker.on('click', () => {
+        showMarkerInfo(marker);
+      });
+      map.add(marker);
+      clinicMarkers.push(marker);
+    }
+  });
+}
+
+function showMarkerInfo(marker) {
+  const rec = marker.getExtData();
+  const content = `
+    <div style="padding:4px 0;min-width:160px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:#212121">${rec.name}</div>
+      <div style="font-size:12px;color:#757575;margin-bottom:3px">${rec.type} · ${rec.status}</div>
+      ${rec.phone ? `<div style="font-size:12px;color:#1565C0;margin-bottom:3px">☎ ${rec.phone}</div>` : ''}
+      ${rec.address ? `<div style="font-size:12px;color:#757575;margin-bottom:3px">📍 ${rec.address}</div>` : ''}
+      ${rec.note ? `<div style="font-size:12px;color:#757575;margin-bottom:8px;padding:6px;background:#f5f5f5;border-radius:6px">${rec.note}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px">
+        ${rec.phone ? `<button onclick="window.location.href='tel:${rec.phone}'" style="background:#2E7D32;color:white;border:none;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer">📞 联系</button>` : ''}
+        <button onclick="startNav(${rec.lng},${rec.lat},'${rec.name}')" style="background:#1565C0;color:white;border:none;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer">🧭 导航</button>
+      </div>
+    </div>
+  `;
+  if (!map.getInfoWindow) {
+    // 使用 AMap.InfoWindow
+    const infoWindow = new AMap.InfoWindow({ content, isCustom: false, offset: new AMap.Pixel(0, -36) });
+    infoWindow.open(map, marker.getPosition());
+    return;
+  }
+}
+
+function getMarkerColor(status) {
+  const map = { '有意向': '#2E7D32', '待跟进': '#F57F17', '已录入': '#1565C0', '无意向': '#C62828' };
+  return map[status] || '#757575';
+}
+
+// ====== POI 搜索建议 ======
+function handleSearch(val) {
+  clearTimeout(poiSuggestionsTimer);
+  const box = document.getElementById('poiSuggestions');
+  if (!val.trim()) { box.classList.remove('show'); return; }
+  poiSuggestionsTimer = setTimeout(() => {
+    placeSearch.search(val, (status, result) => {
+      if (status === 'complete' && result.poiList?.pois?.length) {
+        box.innerHTML = result.poiList.pois.slice(0, 8).map(p => {
+          const [lng, lat] = (p.location || '').split(',');
+          return `<div class="poi-suggestion-item" onclick="selectSuggestion('${p.name}','${p.address}',${lng},${lat})">
+            <div class="sug-name">${p.name}</div>
+            <div class="sug-addr">${p.address || p.type}</div>
+          </div>`;
+        }).join('');
+        box.classList.add('show');
+      } else {
+        box.classList.remove('show');
+      }
+    });
+  }, 350);
+}
+
+function selectSuggestion(name, addr, lng, lat) {
+  document.getElementById('poiSuggestions').classList.remove('show');
+  document.getElementById('searchInput').value = name;
+  if (lng && lat) {
+    map.setCenter([lng, lat]);
+    map.setZoom(17);
+    const marker = new AMap.Marker({ position: [lng, lat], map });
+    setTimeout(() => map.remove(marker), 5000);
+  }
+  showToast(`已定位: ${name}`, 2000);
+}
+
+function triggerSearch(val) {
+  placeSearch.search(val);
+}
+
+// ====== 附近 POI 扫描 ======
+let currentScanResults = [];
+
+// ====== 自动扫描附近诊所（首次定位后触发）======
+function autoScanNearby() {
+  if (!currentLocation) {
+    showToast('无法获取当前位置', 2000);
+    return;
+  }
+  const types = '090100|090101|090102|090103|090200|090201|090700|090800|120000|120200|120300|130000|130100|130200|150000|050000|050100|050200';
+  AMap.service('AMap.PlaceSearch', () => {
+    const ps = new AMap.PlaceSearch({
+      city: '南宁',
+      extensions: 'all',
+      type: types,
+      pageSize: 30,
+    });
+    ps.searchNearBy('', currentLocation, 2000, (status, result) => {
+      if (status === 'complete' && result.poiList?.pois?.length) {
+        const pois = result.poiList.pois.map((p, i) => {
+          const [lng, lat] = (p.location || '').split(',').map(Number);
+          const dist = getDistance(currentLocation[1], currentLocation[0], lat, lng);
+          return { id: 'scan_' + i, name: p.name, address: p.address || '', phone: p.tel || '', type: p.type, lat, lng, dist };
+        }).filter(p => p.lat && p.dist <= 2);
+        currentScanResults = pois;
+        if (pois.length > 0) {
+          renderPoiList(pois);
+          document.getElementById('poiPanel').classList.add('show');
+          showToast(`发现 ${pois.length} 个附近场所`, 3000);
+        }
+      }
+    });
+  });
+}
+
+// ====== 手动触发附近扫描 ======
+function showPoiPanel() {
+  if (!currentLocation) {
+    showToast('请先允许定位，或等待定位完成', 2500);
+    goToMyLocation();
+    return;
+  }
+  showLoading('正在扫描附近场所...');
+  const types = '090100|090101|090102|090103|090200|090201|090700|090800|120000|120200|120300|130000|130100|130200|150000|050000|050100|050200';
+  AMap.service('AMap.PlaceSearch', () => {
+    const ps = new AMap.PlaceSearch({
+      city: '南宁',
+      extensions: 'all',
+      type: types,
+      pageSize: 30,
+    });
+    ps.searchNearBy('', currentLocation, 2000, (status, result) => {
+      hideLoading();
+      if (status === 'complete' && result.poiList?.pois?.length) {
+        const pois = result.poiList.pois.map((p, i) => {
+          const [lng, lat] = (p.location || '').split(',').map(Number);
+          const dist = getDistance(currentLocation[1], currentLocation[0], lat, lng);
+          return { id: 'scan_' + i, name: p.name, address: p.address || '', phone: p.tel || '', type: p.type, lat, lng, dist };
+        }).filter(p => p.lat && p.dist <= 2);
+        currentScanResults = pois;
+        renderPoiList(pois);
+      } else {
+        document.getElementById('poiList').innerHTML = '<div class="empty-state"><div class="emoji">🔍</div><p>附近2公里内暂未发现医疗设施</p></div>';
+      }
+      document.getElementById('poiPanel').classList.add('show');
+    });
+  });
+}
+
+function renderPoiList(pois) {
+  const list = document.getElementById('poiList');
+  if (!pois.length) {
+    list.innerHTML = '<div class="empty-state"><div class="emoji">🔍</div><p>附近2公里内暂未发现医疗设施</p></div>';
+    return;
+  }
+  list.innerHTML = pois.map(p => `
+    <div class="poi-item">
+      <div class="poi-item-info">
+        <div class="poi-item-name">${p.name}</div>
+        <div class="poi-item-type">${p.type}</div>
+        ${p.address ? `<div class="poi-item-addr">📍 ${p.address}</div>` : ''}
+      </div>
+      <div class="poi-item-right">
+        <div class="poi-distance">${p.dist.toFixed(1)}km</div>
+        <div class="poi-btns">
+          <button class="poi-btn poi-btn-nav" onclick="event.stopPropagation();startNav(${p.lng},${p.lat},'${p.name}')">🧭</button>
+          <button class="poi-btn poi-btn-add" onclick="event.stopPropagation();quickAddPoi('${p.name}','${p.address}','${p.phone}','${p.type}',${p.lng},${p.lat})">➕</button>
+          ${p.phone ? `<button class="poi-btn poi-btn-call" onclick="event.stopPropagation();window.location.href='tel:${p.phone}'">📞</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function quickAddPoi(name, address, phone, type, lng, lat) {
+  document.getElementById('fName').value = name;
+  document.getElementById('fAddress').value = address;
+  document.getElementById('fPhone').value = phone;
+  if (type) {
+    const opts = document.querySelectorAll('#fType option');
+    for (const o of opts) {
+      if (type.includes(o.value) || o.value.includes('诊所')) { document.getElementById('fType').value = o.value; break; }
+    }
+  }
+  closePoiPanel();
+  showAddPanel();
+  showToast('已预填信息，请在地图确认位置', 2500);
+}
+
+// ====== 今晚电话面板 ======
+function showPhonePanel() {
+  const today = new Date().toLocaleDateString('zh-CN');
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toLocaleDateString('zh-CN');
+  const pending = records.filter(r =>
+    ['有意向', '待跟进'].includes(r.status) && r.phone
+  );
+  const list = document.getElementById('phoneList');
+  document.getElementById('phoneCount').textContent = pending.length;
+  if (!pending.length) {
+    list.innerHTML = '<div class="empty-state"><div class="emoji">📵</div><p>暂无待联系的记录<br>标记"有意向"或"待跟进"并填写电话后会自动出现</p></div>';
+  } else {
+    list.innerHTML = pending.map(r => `
+      <div class="phone-item">
+        <div class="phone-item-info">
+          <div class="phone-item-name">${r.name}</div>
+          <div class="phone-item-phone">☎ <a href="tel:${r.phone}" style="color:var(--primary);text-decoration:none">${r.phone}</a></div>
+          <div class="phone-item-note">${r.type} · ${r.address || '地址未知'}</div>
+        </div>
+        <button class="phone-call-btn" onclick="window.location.href='tel:${r.phone}'">📞</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('phonePanel').classList.add('show');
+}
+
+// ====== 诊所列表面板 ======
+function showClinicList() {
+  document.getElementById('clinicCount').textContent = records.length;
+  const list = document.getElementById('clinicList');
+  if (!records.length) {
+    list.innerHTML = '<div class="empty-state"><div class="emoji">🏥</div><p>暂无录入记录<br>点击右下角"+"开始陌拜</p></div>';
+  } else {
+    list.innerHTML = records.slice().reverse().map(r => {
+      const badgeClass = { '有意向': 'badge-intent', '待跟进': 'badge-follow', '已录入': 'badge-done', '无意向': 'badge-none' }[r.status] || 'badge-none';
+      const tagsHtml = r.tags && r.tags.length ? r.tags.slice(0, 3).map(t => `<span class="tag" style="font-size:11px;padding:1px 6px;border-radius:4px;background:#E3F2FD;color:var(--primary);margin-right:4px;">${t}</span>`).join('') : '';
+      const photoCount = r.photos && r.photos.length ? `<span style="color:var(--primary);font-size:11px;">📷${r.photos.length}</span>` : '';
+      return `<div class="clinic-item" onclick="showClinicDetail('${r.id}')">
+        <div class="clinic-item-header">
+          <div class="clinic-item-name">${r.name}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${photoCount}
+            <span class="clinic-item-badge ${badgeClass}">${r.status}</span>
+          </div>
+        </div>
+        <div class="clinic-item-row">${r.type} ${r.size ? '· ' + r.size : ''} ${r.intent ? '· ' + r.intent : ''}</div>
+        ${r.contact ? `<div class="clinic-item-row">👤 ${r.contact} ${r.phone ? '| ☎ ' + r.phone : ''}</div>` : r.phone ? `<div class="clinic-item-row">☎ ${r.phone}</div>` : ''}
+        ${r.address ? `<div class="clinic-item-row">📍 ${r.address}</div>` : ''}
+        ${tagsHtml ? `<div class="clinic-item-row" style="margin-top:4px;">${tagsHtml}</div>` : ''}
+        ${r.note ? `<div class="clinic-item-row" style="color:var(--text2);font-style:italic;margin-top:4px;">💬 ${r.note.slice(0,50)}${r.note.length > 50 ? '...' : ''}</div>` : ''}
+        <div class="clinic-item-footer">
+          <div class="clinic-item-time">${r.date}</div>
+          <div class="clinic-item-actions">
+            <button class="clinic-action-btn btn-nav" onclick="event.stopPropagation();startNav(${r.lng || 0},${r.lat || 0},'${r.name}')">🧭</button>
+            ${r.phone ? `<button class="clinic-action-btn btn-call" onclick="event.stopPropagation();window.location.href='tel:${r.phone}'">📞</button>` : ''}
+            <button class="clinic-action-btn btn-del" onclick="event.stopPropagation();deleteRecord('${r.id}')">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('clinicListPanel').classList.add('show');
+}
+
+function showClinicDetail(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  // 填充表单并编辑
+  document.getElementById('addPanelTitle').innerHTML = '✏️ 编辑记录 <span class="edit-mode-badge">编辑中</span>';
+  document.getElementById('fName').value = r.name;
+  document.getElementById('fPhone').value = r.phone || '';
+  document.getElementById('fAddress').value = r.address || '';
+  document.getElementById('fNote').value = r.note || '';
+  document.getElementById('fType').value = r.type || '诊所';
+  document.getElementById('fSize').value = r.size || '小型';
+  document.getElementById('fContact').value = r.contact || '';
+  document.getElementById('fStatus').value = r.status || '有意向';
+  document.getElementById('fIntent').value = r.intent || '待了解';
+  document.querySelectorAll('.status-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.val === r.status);
+  });
+  // 加载标签
+  selectedTags = r.tags || [];
+  document.querySelectorAll('.tag-btn').forEach(t => {
+    t.classList.toggle('selected', selectedTags.includes(t.dataset.val));
+  });
+  // 加载照片
+  currentPhotos = r.photos || [];
+  renderPhotoPreview();
+  closeClinicList();
+  showAddPanel();
+  showToast('已加载记录，可修改后保存', 2000);
+  window._editingId = id;
+}
+
+// 渲染照片预览
+function renderPhotoPreview() {
+  const preview = document.getElementById('photoPreview');
+  const uploadArea = document.getElementById('photoArea');
+  preview.innerHTML = '';
+  currentPhotos.forEach((photoData, i) => {
+    const photoId = 'photo_edit_' + i;
+    const div = document.createElement('div');
+    div.className = 'photo-item';
+    div.id = photoId;
+    div.innerHTML = `
+      <img src="${photoData}" alt="照片${i+1}">
+      <button type="button" class="photo-remove" onclick="removePhoto('${photoId}', '${photoData}')">×</button>
+    `;
+    preview.appendChild(div);
+  });
+  if (currentPhotos.length >= 1) {
+    uploadArea.querySelector('.photo-hint').style.display = 'none';
+  } else {
+    uploadArea.querySelector('.photo-hint').style.display = 'flex';
+  }
+}
+
+// ====== 导航 ======
+function startNav(lng, lat, name) {
+  currentNavTarget = { lng, lat, name };
+  document.getElementById('navTargetName').textContent = name;
+  document.getElementById('navPanel').classList.add('show');
+  initNavMap(lng, lat);
+}
+
+function initNavMap(lng, lat) {
+  document.getElementById('navContainer').innerHTML = '';
+  const navMap = new AMap.Map('navContainer', { zoom: 14, center: [lng, lat] });
+  const isStart = currentLocation ? [currentLocation[0], currentLocation[1]] : null;
+
+  if (currentNavMode === 'driving') {
+    AMap.plugin('AMap.Driving', () => {
+      const d = new AMap.Driving({
+        map: navMap,
+        panel: 'navContainer',
+        policy: AMap.DrivingPolicy.LEAST_TIME,
+      });
+      if (isStart) d.search(isStart, [lng, lat]);
+      else { navMap.addControl(new AMap.Marker({ position: [lng, lat] })); }
+    });
+  } else if (currentNavMode === 'walking') {
+    AMap.plugin('AMap.Walking', () => {
+      const w = new AMap.Walking({ map: navMap, panel: 'navContainer' });
+      if (isStart) w.search(isStart, [lng, lat]);
+      else navMap.addControl(new AMap.Marker({ position: [lng, lat] }));
+    });
+  } else {
+    AMap.plugin('AMap.Transit', () => {
+      const t = new AMap.Transit({ map: navMap, panel: 'navContainer', city: '南宁' });
+      if (isStart) t.search(isStart, [lng, lat]);
+      else navMap.addControl(new AMap.Marker({ position: [lng, lat] }));
+    });
+  }
+}
+
+function switchNavMode(mode) {
+  currentNavMode = mode;
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab' + (mode === 'driving' ? 'Driving' : mode === 'walking' ? 'Walking' : 'Bus')).classList.add('active');
+  if (currentNavTarget) initNavMap(currentNavTarget.lng, currentNavTarget.lat);
+}
+
+// ====== 录入面板 ======
+function showAddPanel() {
+  window._editingId = null;
+  document.getElementById('addPanelTitle').innerHTML = '➕ 录入陌拜';
+  document.getElementById('clinicForm').reset();
+  document.getElementById('fStatus').value = '有意向';
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === '有意向'));
+  document.getElementById('charCount').textContent = '0/500';
+  // 重置照片和标签
+  resetFormExtras();
+  document.getElementById('addPanel').classList.add('show');
+  updateCharCount();
+}
+
+// ====== 自动定位当前地址 ======
+let selectedTags = [];
+let currentPhotos = [];
+
+function locateCurrentAddress() {
+  if (!currentLocation) {
+    showToast('请先点击定位按钮获取位置', 2000);
+    return;
+  }
+  showLoading('正在定位地址...');
+  geocoder.getAddress(currentLocation, (status, result) => {
+    hideLoading();
+    if (status === 'complete' && result.regeocode) {
+      const addr = result.regeocode.formattedAddress;
+      // 简化地址（去掉"广西壮族自治区南宁市"）
+      const shortAddr = addr.replace(/广西壮族自治区|南宁市/g, '').replace(/广西|南宁/g, '');
+      document.getElementById('fAddress').value = shortAddr;
+      showToast('地址已定位', 1500);
+    } else {
+      showToast('定位地址失败', 2000);
+    }
+  });
+}
+
+// ====== 机构类型变化 ======
+function onTypeChange() {
+  const type = document.getElementById('fType').value;
+  // 可根据类型调整默认规模
+  if (type === '医院') {
+    document.getElementById('fSize').value = '大型';
+  } else if (type === '门诊部') {
+    document.getElementById('fSize').value = '中型';
+  }
+}
+
+// ====== 标签选择 ======
+function toggleTag(el) {
+  const val = el.dataset.val;
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) {
+    if (!selectedTags.includes(val)) selectedTags.push(val);
+  } else {
+    selectedTags = selectedTags.filter(t => t !== val);
+  }
+}
+
+// ====== 照片上传 ======
+function triggerPhoto() {
+  document.getElementById('photoInput').click();
+}
+
+function handlePhotoSelect(input) {
+  if (!input.files || !input.files.length) return;
+  
+  const preview = document.getElementById('photoPreview');
+  const uploadArea = document.getElementById('photoArea');
+  
+  Array.from(input.files).forEach(file => {
+    if (currentPhotos.length >= 6) {
+      showToast('最多上传6张照片', 2000);
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const photoData = e.target.result;
+      currentPhotos.push(photoData);
+      
+      const photoId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      const div = document.createElement('div');
+      div.className = 'photo-item';
+      div.id = photoId;
+      div.innerHTML = `
+        <img src="${photoData}" alt="照片">
+        <button type="button" class="photo-remove" onclick="removePhoto('${photoId}', '${photoData}')">×</button>
+      `;
+      preview.appendChild(div);
+      
+      // 隐藏上传提示
+      if (currentPhotos.length >= 1) {
+        uploadArea.querySelector('.photo-hint').style.display = 'none';
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  // 清空input以便重复选择同一张照片
+  input.value = '';
+}
+
+function removePhoto(elId, photoData) {
+  document.getElementById(elId)?.remove();
+  currentPhotos = currentPhotos.filter(p => p !== photoData);
+  
+  const uploadArea = document.getElementById('photoArea');
+  if (currentPhotos.length === 0) {
+    uploadArea.querySelector('.photo-hint').style.display = 'flex';
+  }
+}
+
+// ====== 重置表单照片和标签 ======
+function resetFormExtras() {
+  selectedTags = [];
+  currentPhotos = [];
+  document.getElementById('photoPreview').innerHTML = '';
+  document.getElementById('photoArea').querySelector('.photo-hint').style.display = 'flex';
+  // 清除标签选中状态
+  document.querySelectorAll('.tag-btn').forEach(t => t.classList.remove('selected'));
+}
+
+function closeAddPanel() { 
+  document.getElementById('addPanel').classList.remove('show'); 
+}
+function closeClinicList() { document.getElementById('clinicListPanel').classList.remove('show'); }
+function closePoiPanel() { document.getElementById('poiPanel').classList.remove('show'); }
+function closePhonePanel() { document.getElementById('phonePanel').classList.remove('show'); }
+function closeNav() { document.getElementById('navPanel').classList.remove('show'); }
+
+function selectStatus(btn) {
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('fStatus').value = btn.dataset.val;
+}
+
+function updateCharCount() {
+  const n = document.getElementById('fNote').value.length;
+  document.getElementById('charCount').textContent = `${n}/500`;
+}
+
+function submitClinic(e) {
+  e.preventDefault();
+  const name = document.getElementById('fName').value.trim();
+  if (!name) {
+    showToast('请填写诊所名称', 2000);
+    return;
+  }
+  const rec = {
+    id: window._editingId || 'id_' + Date.now(),
+    name: name,
+    phone: document.getElementById('fPhone').value.trim(),
+    type: document.getElementById('fType').value,
+    size: document.getElementById('fSize').value,
+    contact: document.getElementById('fContact').value.trim(),
+    address: document.getElementById('fAddress').value.trim(),
+    status: document.getElementById('fStatus').value,
+    intent: document.getElementById('fIntent').value,
+    tags: [...selectedTags],
+    note: document.getElementById('fNote').value.trim(),
+    photos: [...currentPhotos],
+    date: new Date().toLocaleDateString('zh-CN'),
+    lat: currentLocation ? currentLocation[1] : null,
+    lng: currentLocation ? currentLocation[0] : null,
+  };
+  if (window._editingId) {
+    const idx = records.findIndex(r => r.id === window._editingId);
+    if (idx !== -1) records[idx] = rec;
+  } else {
+    records.push(rec);
+  }
+  saveRecords();
+  renderAllMarkers();
+  closeAddPanel();
+  resetFormExtras();
+  showToast('✅ 已保存 ' + rec.name, 2000);
+}
+
+function submitAndAddAnother() {
+  submitClinic({ preventDefault: () => {} });
+  setTimeout(showAddPanel, 400);
+}
+
+function deleteRecord(id) {
+  if (!confirm('确认删除该记录？')) return;
+  records = records.filter(r => r.id !== id);
+  saveRecords();
+  renderAllMarkers();
+  showClinicList();
+  showToast('已删除', 1500);
+}
+
+// ====== 工具函数 ======
+function saveRecords() {
+  localStorage.setItem('clinicRecords', JSON.stringify(records));
+}
+
+function showToast(msg, duration = 2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function showLoading(msg) {
+  document.getElementById('loadingText').textContent = msg;
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  const el = document.getElementById('loadingOverlay');
+  if (el) { el.classList.add('hide'); setTimeout(() => el.remove(), 350); }
+}
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+
+
+// ====== 启动 ======
+window.addEventListener('load', async () => {
+  // 直接初始化地图（无需本地服务器，支持云端访问）
+  initMap().catch(err => {
+    console.error('地图初始化失败:', err);
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.innerHTML = `
+      <div style="text-align:center; padding:32px 24px; color:#333;">
+        <div style="font-size:48px; margin-bottom:16px;">🗺️</div>
+        <div style="font-size:16px; font-weight:600; margin-bottom:12px;">地图加载失败</div>
+        <div style="font-size:13px; color:#666; line-height:1.8; text-align:left;">
+          <b>可能原因：</b><br>
+          ① 手机网络无法访问<strong>高德地图服务</strong><br>
+          &nbsp;&nbsp;(高德域名可能被运营商屏蔽)<br>
+          ② 换个WiFi或手机数据重试<br>
+        </div>
+        <button onclick="location.reload()" style="margin-top:20px; padding:10px 28px; background:#1565C0; color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer;">
+          重新加载
+        </button>
+      </div>`;
+    overlay.classList.add('show');
+    overlay.classList.remove('hide');
+  });
+});
+</script>
+</body>
+</html>
