@@ -837,35 +837,13 @@ async function initMap() {
     throw new Error('无法加载高德地图 JS API，请检查网络连接');
   }
 
+  // ====== 使用高德官方标准图层（和导航一样的样式）=======
   map = new AMap.Map('map', {
     zoom: 13,
     center: [108.366, 22.817],
     viewMode: '2D',
     showIndoorMap: false,
-    layers: [],  // 不加载默认图层，避免默认瓦片服务器失效导致空白
-  });
-
-  // ====== 强制使用高德矢量标准地图瓦片 ======
-  AMap.plugin('AMap.TileLayer', () => {
-    // 矢量标准地图瓦片（style=7 = 纯矢量街道图，不是卫星图）
-    const tileOpt = new AMap.TileLayer({
-      getTileUrl: function(x, y, z) {
-        return `https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=${x}&y=${y}&z=${z}`;
-      },
-      tileSize: 256,
-      zIndex: 0,
-    });
-    map.add(tileOpt);
-
-    // 标注/路网瓦片（叠加在地图像上显示路名、建筑名）
-    const labelOpt = new AMap.TileLayer({
-      getTileUrl: function(x, y, z) {
-        return `https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=6&x=${x}&y=${y}&z=${z}`;
-      },
-      tileSize: 256,
-      zIndex: 8,
-    });
-    map.add(labelOpt);
+    layers: [AMap.createDefaultLayer()],  // 高德官方标准图层
   });
 
   // 添加高德官方缩放+定位控件
